@@ -35,7 +35,7 @@ author: xmy
 >   - 后面每次不够用时候扩容至1.5倍
 > - 构造时指定大小
 >   - 创建对象时，直接开辟数组空间
->   - 后面不够的时候扩容至1.5背倍
+>   - 后面不够的时候扩容至1.5倍
 > - 扩容的算法
 >   - 获取当前容量
 >   - 计算新的容量（1.5倍）
@@ -193,15 +193,15 @@ author: xmy
 > #### HashMap
 >
 > - 非线程安全
->
 > - k和v允许出现null值
->
 > - 初始化大小
 >
 >   - 默认是16（数组的默认大小）
 >   - 如果用户传入的话，会向上拓展为原来的2的幂次
 >   - 惰性加载：第一次插入时才初始化
->
+> - 扩容时机：
+>   - 哈希桶的数量小于**64**，链表长度超过**8**。进行扩容尝试缩短链表长度。
+>   - 负载因子：当哈希桶的元素数量超过阈值（`capacity * loadFactor`）时，`HashMap` 会触发扩容。负载因子默认是0.75。
 > - 底层数据结构
 >
 >   - JDK1.8之前
@@ -254,13 +254,17 @@ author: xmy
 >
 > - 数组+链表；有seg段的概念
 >
+> - 通过 `hash` 的高位来确定键在哪个段中
+>
 > - 每个seg对应一个锁。默认大小是16，一旦初始化不能改变。不同seg的写入是可以并发执行的。
+>
+> - 在hashentry中通过hash求余判断在hashentry的哪个槽中
 >
 >   ![image-20250919005752426](C:\Users\HanFaye\AppData\Roaming\Typora\typora-user-images\image-20250919005752426.png)
 >
 > ##### 新版本
 >
-> - 数组+链表+红黑树；无seg的概念
+> - 数组+链表（单向）+红黑树；无seg的概念
 >
 > - 使用`synchronized`。锁定链表或红黑树的首节点。当发生hash冲突时候，才会获得锁
 >
@@ -269,8 +273,74 @@ author: xmy
 > 二者区别
 >
 > - 哈希冲突的解决办法
+>
+>   - 老版本：对seg加锁（ReentrantLock）
+>   - 对node（链表/红黑树的首节点）加锁（synchronized）。锁的粒度更细
+>
+>   > 两个锁的区别
+>   >
+>   > - r
+>   >   - 手动获取与释放
+>   >   - 非公平（默认）和公平都支持
+>   >   - 支持中断响应和超时机制
+>   >   - 支持阻塞和非阻塞获取锁的方式`lock.lock()` `lock.tryLock()`(获得时返回true否则false)
+>   > - s
+>   >   - 自动释放
+>   >   - 非公平锁
+>   >   - 不支持中断响应和超时机制
+>   >   - 获取不到锁会进行阻塞
+>   >
+>   > > - 公平锁：性能较低、不会发生饥饿
+>   > >   - 按照先来先服务的顺序（FIFO）
+>   > >   - 比如排队、日志处理
+>   > > - 非公平锁：性能较高、可能会发生饥饿
+>   > >   - 不关心线程进入等待的顺序
+>   > >   - 所有等待的线程会同时参与竞争，谁抢到锁谁就可以执行
+>   > >   - 比如缓存、线程池
+>
 > - 并发的解决办法
+>
 > - 并发度上的差异
+
+
+
+> [!NOTE]
+>
+> ##### 二义性问题
+>
+> - hashmap
+>
+>   单线程，不存在二义性。**kv可以是null。k为null只能有一个**。
+>
+>   hashset也可以至多存储一个null。
+>
+> - concurrenthashmap
+>
+>   多线程，存在二义性问题。返回的结果为null有两种情况，值不存在/值就是null。**kv均不能为null**
+
+
+
+> [!NOTE]
+>
+> #### map
+>
+> - hashmap
+>
+>   数组+链表+红黑树
+>
+>   kv允许为bull
+>
+> - concurrenthashmap
+>
+>   kv都不允许为null
+>
+> - treemap
+>
+>   红黑树、键值是按照键的排序顺序存储的。复杂度O（n）
+>
+>   key不能为null、v可以为null
+
+
 
 
 
@@ -286,8 +356,18 @@ author: xmy
 
 - TreeSet底层使用红黑树，插入时按照默认/自定义的key排序规则指定插入位置
 
+> [!NOTE]
+>
+> hashset：hashmap的v指向一个全局变量，表示空。增删复杂度O（1）
+>
+> linkedhashset：hashset子类、添加双向链表、能够按照添加顺序进行顺序遍历。O（1）
+>
+> treeset：底层使用红黑树，对插入元素有自然排序/自定义排序。OP（logn）
+>
+> 三者都不是线程安全的
+
 ### 总结
-- Collection下主要有List，Set，Map三个接口
+- **Collection下主要有List，Set，Map三个接口**
 
 - List和Set是继承了Collection接口
 
@@ -297,7 +377,7 @@ author: xmy
 
 - Set主要有HashSet，TreeSet，LinkedHashSet
 
-- Map主要有HashMap，HashTable，TreeMap，ConcurrentHashMap
+- Map主要有HashMap，TreeMap，ConcurrentHashMap
 
 - 当我们要存键值对，以便通过键值访问数据时，就用Map，此时需要排序就用TreeMap，不需要就用HashMap，需要线程安全就用ConcurrentHashMap
 

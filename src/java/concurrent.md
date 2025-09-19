@@ -139,7 +139,7 @@ AQS的实现主要有两种方式：独占式（Exclusive）和共享式（Share
 ### 并发容器
 
 Java中为保证并发下的线程安全，设计了一些并发容器，常见的有CopyOnWriteArrayList和ConcurrentHashMap
-#### CopyOnWriteArrayList
+#### CopyOnWriteArrayList（写时复制）
 CopyOnWriteArrayList的实现原理主要分为两个方面，一是利用可重入锁实现线程安全，二是通过复制数组实现读写分离。
 
 > [!NOTE]
